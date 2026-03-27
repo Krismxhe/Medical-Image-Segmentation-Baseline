@@ -1,0 +1,14 @@
+torch>=2.0.0
+torchvision>=0.15.0
+numpy>=1.23.0,<2.0.0     # numpy 2.x breaks older PyTorch builds
+pytorch-lightning>=2.0.0
+segmentation-models-pytorch>=0.3.3
+albumentations>=1.3.0,<2.0.0
+hydra-core>=1.3.0
+omegaconf>=2.3.0
+torchmetrics>=1.0.0
+Pillow>=9.0.0
+pandas>=1.5.0
+matplotlib>=3.6.0
+tensorboard>=2.12.0          # required by pytorch-lightning logger
+wandb>=0.15.0

@@ -1,0 +1,5 @@
+# FPN (Feature Pyramid Network) — multi-scale feature fusion
+arch: FPN
+encoder: resnet34
+encoder_weights: imagenet
+in_channels: 3

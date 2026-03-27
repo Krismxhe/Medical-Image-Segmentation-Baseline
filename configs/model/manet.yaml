@@ -1,0 +1,5 @@
+# MAnet — multi-scale attention network
+arch: MAnet
+encoder: resnet34
+encoder_weights: imagenet
+in_channels: 3

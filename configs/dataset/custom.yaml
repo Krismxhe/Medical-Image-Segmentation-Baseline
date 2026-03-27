@@ -1,0 +1,26 @@
+# ── Template for a custom dataset ────────────────────────────────────────────
+#
+# Expected directory structure:
+#
+#   root/
+#   ├── train/
+#   │   ├── images/       ← RGB images (.png or .jpg)
+#   │   └── masks/        ← segmentation masks (.png)
+#   ├── val/
+#   │   ├── images/
+#   │   └── masks/
+#   └── test/
+#       ├── images/
+#       └── masks/
+#
+# mask_mode:
+#   index   → pixel values are class indices 0,1,2,...
+#   binary  → pixel values are {0, 255}, auto-converted to {0, 1}
+# ─────────────────────────────────────────────────────────────────────────────
+name: custom
+root: /path/to/your/dataset
+mask_dir: masks
+mask_mode: index
+num_classes: 2
+class_names: [background, foreground]
+foreground_classes: [1]

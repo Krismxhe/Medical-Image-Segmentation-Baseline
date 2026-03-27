@@ -1,0 +1,36 @@
+# Light augmentation — minimal transforms, suitable for small datasets or sanity checks
+random_resized_crop:
+  enabled: false          # if false, images are just resized to img_size
+  scale: [0.8, 1.0]
+horizontal_flip:
+  enabled: true
+  p: 0.5
+vertical_flip:
+  enabled: false
+  p: 0.5
+random_rotate90:
+  enabled: false
+  p: 0.5
+elastic:
+  enabled: false
+  p: 0.3
+grid_distortion:
+  enabled: false
+  p: 0.3
+color_jitter:
+  enabled: false
+  brightness: 0.1
+  contrast: 0.1
+  saturation: 0.1
+  hue: 0.05
+  p: 0.3
+gaussian_blur:
+  enabled: false
+  sigma_limit: [0.1, 1.0]
+  p: 0.2
+gaussian_noise:
+  enabled: false
+  p: 0.2
+normalize:
+  mean: [0.485, 0.456, 0.406]
+  std: [0.229, 0.224, 0.225]

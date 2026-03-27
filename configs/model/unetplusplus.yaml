@@ -1,0 +1,5 @@
+# UNet++ — nested skip connections, generally outperforms plain UNet
+arch: UnetPlusPlus
+encoder: resnet34
+encoder_weights: imagenet
+in_channels: 3

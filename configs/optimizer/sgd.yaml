@@ -1,0 +1,14 @@
+# @package _global_
+optimizer:
+  name: sgd
+  lr: 1.0e-2
+  momentum: 0.9
+  weight_decay: 1.0e-4
+
+scheduler:
+  name: step
+  eta_min: 1.0e-6
+  step_size: 30
+  gamma: 0.1
+  patience: 10
+  factor: 0.5

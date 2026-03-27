@@ -1,0 +1,17 @@
+# @package _global_
+# AdamW — default choice; good for transformer and CNN backbones
+optimizer:
+  name: adamw
+  lr: 1.0e-4
+  weight_decay: 1.0e-4
+
+scheduler:
+  name: cosine        # "cosine", "step", "plateau", "none"
+  # cosine annealing params
+  eta_min: 1.0e-6
+  # step LR params (used when name=step)
+  step_size: 30
+  gamma: 0.1
+  # ReduceLROnPlateau params (used when name=plateau)
+  patience: 10
+  factor: 0.5
