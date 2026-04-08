@@ -1,9 +1,11 @@
 """
-Evaluate a saved checkpoint on the test set and print a metric table.
+Evaluate a saved checkpoint on any dataset split and print a metric table.
 
 Usage:
     python evaluate.py checkpoint=outputs/xxx/checkpoints/best.ckpt
-    python evaluate.py checkpoint=outputs/xxx/checkpoints/best.ckpt dataset=optic
+    python evaluate.py checkpoint=outputs/xxx/checkpoints/best.ckpt split=val
+    python evaluate.py checkpoint=outputs/xxx/checkpoints/best.ckpt split=train
+    python evaluate.py checkpoint=outputs/xxx/checkpoints/best.ckpt dataset=optic split=test
 """
 
 import hydra
@@ -23,7 +25,8 @@ def main(cfg: DictConfig) -> None:
             '  python evaluate.py checkpoint=outputs/.../best.ckpt'
         )
 
-    datamodule = SegDataModule(cfg)
+    split = cfg.get('split', 'test')
+    datamodule = SegDataModule(cfg, eval_split=split)
 
     # Load model weights from checkpoint; architecture is defined by cfg
     model = SegModule.load_from_checkpoint(ckpt_path, cfg=cfg)
@@ -37,7 +40,7 @@ def main(cfg: DictConfig) -> None:
     )
     results = trainer.test(model, datamodule=datamodule)
 
-    print('\n── Test Results ──────────────────────')
+    print(f'\n── Results ({split}) ──────────────────────')
     for k, v in results[0].items():
         print(f'  {k:<30} {v:.4f}')
 

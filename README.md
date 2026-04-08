@@ -96,11 +96,25 @@ Results are saved under `outputs/<experiment_name>/`.
 
 ---
 
-## Evaluate on Test Set
+## Evaluate
+
+Run evaluation on any dataset split with a saved checkpoint:
 
 ```bash
+# Evaluate on test set (default)
 python evaluate.py checkpoint=outputs/<name>/checkpoints/best.ckpt
+
+# Evaluate on val set
+python evaluate.py checkpoint=outputs/<name>/checkpoints/best.ckpt split=val
+
+# Evaluate on train set
+python evaluate.py checkpoint=outputs/<name>/checkpoints/best.ckpt split=train
+
+# Combine with other overrides (e.g. different dataset config)
+python evaluate.py checkpoint=outputs/<name>/checkpoints/best.ckpt split=val dataset=optic
 ```
+
+Prints a metric table (Dice / IoU per class and mean) for the chosen split.
 
 ---
 
@@ -279,7 +293,7 @@ seg-baseline/
 │   └── transforms/
 │       └── build_transforms.py ← augmentation pipeline builder
 ├── train.py               ← training entry point
-├── evaluate.py            ← test-set evaluation
+├── evaluate.py            ← evaluation on any split (train / val / test)
 ├── predict.py             ← single-image inference + visualisation
 └── requirements.txt
 ```

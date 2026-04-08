@@ -76,9 +76,10 @@ class SegDataset(Dataset):
 class SegDataModule(pl.LightningDataModule):
     """Wraps SegDataset for use with PyTorch Lightning Trainer."""
 
-    def __init__(self, cfg):
+    def __init__(self, cfg, eval_split: str = 'test'):
         super().__init__()
         self.cfg = cfg
+        self.eval_split = eval_split  # which split trainer.test() evaluates
 
     def setup(self, stage=None):
         from src.transforms.build_transforms import build_transforms
@@ -115,4 +116,7 @@ class SegDataModule(pl.LightningDataModule):
         return self._loader(self.val_ds, shuffle=False)
 
     def test_dataloader(self):
-        return self._loader(self.test_ds, shuffle=False)
+        ds_map = {'train': self.train_ds, 'val': self.val_ds, 'test': self.test_ds}
+        if self.eval_split not in ds_map:
+            raise ValueError(f"eval_split must be one of {list(ds_map)}, got '{self.eval_split}'")
+        return self._loader(ds_map[self.eval_split], shuffle=False)
