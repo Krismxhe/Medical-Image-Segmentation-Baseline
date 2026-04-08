@@ -22,6 +22,13 @@ train:
   early_stopping: false
   early_stopping_patience: 15
 
+# ── Hardware / distributed training ──────────────────────────────────────────
+hardware:
+  accelerator: auto         # "auto", "gpu", "cpu"
+  devices: auto             # "auto", integer count, or list e.g. [0,1]
+  num_nodes: 1              # number of machines
+  strategy: auto            # "auto", "ddp", "ddp_find_unused_parameters_false", "fsdp"
+
 # ── Checkpoint ────────────────────────────────────────────────────────────────
 checkpoint:
   monitor: val/dice_mean  # metric to monitor for saving best model

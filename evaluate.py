@@ -28,7 +28,13 @@ def main(cfg: DictConfig) -> None:
     # Load model weights from checkpoint; architecture is defined by cfg
     model = SegModule.load_from_checkpoint(ckpt_path, cfg=cfg)
 
-    trainer = pl.Trainer(accelerator='auto', devices='auto', logger=False)
+    trainer = pl.Trainer(
+        accelerator=cfg.hardware.accelerator,
+        devices=cfg.hardware.devices,
+        num_nodes=cfg.hardware.num_nodes,
+        strategy=cfg.hardware.strategy,
+        logger=False,
+    )
     results = trainer.test(model, datamodule=datamodule)
 
     print('\n── Test Results ──────────────────────')

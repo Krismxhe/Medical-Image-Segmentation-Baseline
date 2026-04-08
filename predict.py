@@ -52,9 +52,13 @@ def predict(img_path: str, ckpt_path: str, img_size: int = 512,
     model.eval().to(device)
 
     # Read saved cfg from checkpoint
-    saved_cfg  = OmegaConf.create(model.hparams['cfg'])
+    saved_cfg   = OmegaConf.create(model.hparams['cfg'])
     num_classes = model.num_classes
     class_names = model.class_names
+
+    # Use checkpoint's training img_size if the caller did not override it
+    if img_size is None:
+        img_size = saved_cfg.train.img_size
 
     # ── Pre-process ───────────────────────────────────────────────────────────
     image = np.array(Image.open(img_path).convert('RGB'))
@@ -118,7 +122,7 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Single-image inference')
     parser.add_argument('--img',        required=True,          help='Input image path')
     parser.add_argument('--checkpoint', required=True,          help='Checkpoint .ckpt path')
-    parser.add_argument('--img_size',   type=int, default=512,  help='Resize side for inference')
+    parser.add_argument('--img_size',   type=int, default=None, help='Resize side for inference (default: read from checkpoint)')
     parser.add_argument('--out',        default=None,           help='Output image path')
     parser.add_argument('--device',     default='cpu',          help='cpu / cuda / mps')
     args = parser.parse_args()

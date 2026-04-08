@@ -80,8 +80,10 @@ def main(cfg: DictConfig) -> None:
     # ── Trainer ───────────────────────────────────────────────────────────────
     trainer = pl.Trainer(
         max_epochs=cfg.train.epochs,
-        accelerator='auto',
-        devices='auto',
+        accelerator=cfg.hardware.accelerator,
+        devices=cfg.hardware.devices,
+        num_nodes=cfg.hardware.num_nodes,
+        strategy=cfg.hardware.strategy,
         logger=logger,
         callbacks=callbacks,
         log_every_n_steps=1,

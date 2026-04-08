@@ -114,9 +114,9 @@ class SegModule(pl.LightningModule):
         logits = self(images)
         loss, loss_dice, loss_aux = self._loss(logits, masks)
 
-        self.log('train/loss',      loss,      on_step=True,  on_epoch=True, prog_bar=True)
-        self.log('train/loss_dice', loss_dice, on_step=False, on_epoch=True)
-        self.log('train/loss_ce',   loss_aux,  on_step=False, on_epoch=True)
+        self.log('train/loss',      loss,      on_step=True,  on_epoch=True, prog_bar=True, sync_dist=True)
+        self.log('train/loss_dice', loss_dice, on_step=False, on_epoch=True, sync_dist=True)
+        self.log('train/loss_ce',   loss_aux,  on_step=False, on_epoch=True, sync_dist=True)
         return loss
 
     def validation_step(self, batch, batch_idx):
@@ -127,7 +127,7 @@ class SegModule(pl.LightningModule):
 
         self.val_dice.update(preds, masks)
         self.val_iou.update(preds, masks)
-        self.log('val/loss', loss, on_step=False, on_epoch=True, prog_bar=True)
+        self.log('val/loss', loss, on_step=False, on_epoch=True, prog_bar=True, sync_dist=True)
 
     def on_validation_epoch_end(self):
         self._log_metrics('val', self.val_dice, self.val_iou)
@@ -152,20 +152,20 @@ class SegModule(pl.LightningModule):
 
         if self._is_binary:
             # Binary: both are scalars
-            self.log(f'{prefix}/dice_mean', dice_scores, prog_bar=True)
-            self.log(f'{prefix}/iou_mean',  iou_scores,  prog_bar=True)
+            self.log(f'{prefix}/dice_mean', dice_scores, prog_bar=True, sync_dist=True)
+            self.log(f'{prefix}/iou_mean',  iou_scores,  prog_bar=True, sync_dist=True)
         else:
             # Multi-class: both are 1-D tensors of length num_classes
             for i, name in enumerate(self.class_names):
-                self.log(f'{prefix}/dice_{name}', dice_scores[i])
-                self.log(f'{prefix}/iou_{name}',  iou_scores[i])
+                self.log(f'{prefix}/dice_{name}', dice_scores[i], sync_dist=True)
+                self.log(f'{prefix}/iou_{name}',  iou_scores[i],  sync_dist=True)
 
             # Mean over foreground classes only (exclude background)
             fg = self.foreground_ids
             dice_mean = dice_scores[fg].mean()
             iou_mean  = iou_scores[fg].mean()
-            self.log(f'{prefix}/dice_mean', dice_mean, prog_bar=True)
-            self.log(f'{prefix}/iou_mean',  iou_mean,  prog_bar=True)
+            self.log(f'{prefix}/dice_mean', dice_mean, prog_bar=True, sync_dist=True)
+            self.log(f'{prefix}/iou_mean',  iou_mean,  prog_bar=True, sync_dist=True)
 
     # ── Optimiser & scheduler ─────────────────────────────────────────────────
 

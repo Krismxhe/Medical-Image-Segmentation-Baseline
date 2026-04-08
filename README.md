@@ -11,6 +11,7 @@ Built on [Segmentation Models PyTorch](https://github.com/qubvel-org/segmentatio
 - **Multi-class & binary segmentation**: both are supported through a single code path.
 - **20+ architectures × 100+ encoders**: UNet, UNet++, DeepLabV3+, FPN, MAnet, … with ResNet, EfficientNet, MiT, … backbones.
 - **Automatic metric logging**: per-class and mean Dice / IoU, logged to TensorBoard or W&B.
+- **Multi-GPU / DDP training**: configurable via `hardware.*` fields in `train.yaml` or command-line overrides.
 
 ---
 
@@ -153,6 +154,9 @@ configs/
 | `train.precision` | `"32-true"` | `"16-mixed"` for AMP |
 | `train.early_stopping` | false | Enable early stopping |
 | `logging.logger` | `tensorboard` | `"tensorboard"` or `"wandb"` |
+| `hardware.devices` | `auto` | Number of GPUs or list of GPU ids |
+| `hardware.strategy` | `auto` | DDP strategy (`"ddp"`, `"fsdp"`, …) |
+| `hardware.num_nodes` | `1` | Number of machines for multi-node training |
 
 ### Key parameters in `configs/model/*.yaml`
 
@@ -194,6 +198,53 @@ python train.py dataset=my_dataset
 ```
 
 No Python code changes needed — as long as your data follows the `train/val/test` + `images/masks` directory structure.
+
+---
+
+## Multi-GPU / DDP Training
+
+Multi-GPU training is supported via PyTorch Lightning's DDP backend. The relevant parameters live under `hardware` in `configs/train.yaml`:
+
+| Parameter | Default | Description |
+|---|---|---|
+| `hardware.accelerator` | `auto` | `"auto"`, `"gpu"`, `"cpu"` |
+| `hardware.devices` | `auto` | `"auto"`, integer count, or list e.g. `[0,1]` |
+| `hardware.num_nodes` | `1` | Number of machines (for multi-node jobs) |
+| `hardware.strategy` | `auto` | `"auto"`, `"ddp"`, `"ddp_find_unused_parameters_false"`, `"fsdp"` |
+
+**Examples**
+
+```bash
+# Use all available GPUs with DDP
+python train.py hardware.devices=4 hardware.strategy=ddp
+
+# Use specific GPUs
+python train.py 'hardware.devices=[0,1]' hardware.strategy=ddp
+
+# Mixed-precision + DDP (recommended for speed)
+python train.py hardware.devices=4 hardware.strategy=ddp train.precision=16-mixed
+```
+
+> **Note**: With DDP, each process spawns its own DataLoader workers. If you see high memory or CPU usage, reduce `train.num_workers` accordingly (e.g. `train.num_workers=2`).
+
+---
+
+## Using a Custom Main Config
+
+By default `train.py` loads `configs/train.yaml`. To use a **different top-level config file** (e.g. `configs/experiment_retina.yaml`), pass Hydra's built-in `--config-name` flag:
+
+```bash
+# Create your own top-level config
+cp configs/train.yaml configs/experiment_retina.yaml
+# Edit configs/experiment_retina.yaml as needed, then run:
+python train.py --config-name=experiment_retina
+```
+
+You can combine this with any command-line override as usual:
+
+```bash
+python train.py --config-name=experiment_retina model=deeplabv3plus train.epochs=200
+```
 
 ---
 
