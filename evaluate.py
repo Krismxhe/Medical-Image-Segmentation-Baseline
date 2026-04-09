@@ -11,6 +11,7 @@ Usage:
 import hydra
 from omegaconf import DictConfig
 import pytorch_lightning as pl
+from pytorch_lightning.loggers import TensorBoardLogger, CSVLogger
 
 from src.datasets.seg_dataset import SegDataModule
 from src.models.seg_module import SegModule
@@ -25,18 +26,25 @@ def main(cfg: DictConfig) -> None:
             '  python evaluate.py checkpoint=outputs/.../best.ckpt'
         )
 
-    split = cfg.get('split', 'test')
+    split = cfg.split
     datamodule = SegDataModule(cfg, eval_split=split)
 
     # Load model weights from checkpoint; architecture is defined by cfg
     model = SegModule.load_from_checkpoint(ckpt_path, cfg=cfg)
+    model.eval_split = split  # ensure metric keys reflect the actual split
+
+    run_name = f"{cfg.logging.name}_eval_{split}"
+    loggers = [
+        TensorBoardLogger(save_dir=cfg.logging.save_dir, name=run_name),
+        CSVLogger(save_dir=cfg.logging.save_dir, name=run_name),
+    ]
 
     trainer = pl.Trainer(
         accelerator=cfg.hardware.accelerator,
         devices=cfg.hardware.devices,
         num_nodes=cfg.hardware.num_nodes,
         strategy=cfg.hardware.strategy,
-        logger=False,
+        logger=loggers,
     )
     results = trainer.test(model, datamodule=datamodule)
 

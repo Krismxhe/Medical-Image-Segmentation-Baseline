@@ -77,6 +77,10 @@ class SegModule(pl.LightningModule):
         self.test_dice = metric_cls_dice(**metric_kwargs)
         self.test_iou  = metric_cls_iou(**metric_kwargs)
 
+        # Prefix used when logging test-phase metrics; can be overridden by
+        # evaluate.py to reflect the actual split being evaluated.
+        self.eval_split = 'test'
+
     # ── Forward ───────────────────────────────────────────────────────────────
 
     def forward(self, x):
@@ -140,7 +144,7 @@ class SegModule(pl.LightningModule):
         self.test_iou.update(preds, masks)
 
     def on_test_epoch_end(self):
-        self._log_metrics('test', self.test_dice, self.test_iou)
+        self._log_metrics(self.eval_split, self.test_dice, self.test_iou)
 
     # ── Metric logging helper ─────────────────────────────────────────────────
 

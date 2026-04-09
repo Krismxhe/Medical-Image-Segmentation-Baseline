@@ -5,7 +5,7 @@
 
 defaults:
   - model: unet
-  - dataset: optic
+  - dataset: multiclass
   - augmentation: medium
   - optimizer: adamw
   - _self_
@@ -42,3 +42,6 @@ logging:
   project: seg-baseline   # wandb project name (ignored for tensorboard)
   name: "${model.arch}_${model.encoder}_${dataset.name}"
   save_dir: outputs
+
+# ── Evaluation split (used by evaluate.py) ────────────────────────────────────
+split: test               # "train", "val", or "test"

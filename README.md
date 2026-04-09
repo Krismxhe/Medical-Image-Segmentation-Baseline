@@ -3,19 +3,41 @@
 A lightweight, config-driven baseline for 2D medical image segmentation.
 Built on [Segmentation Models PyTorch](https://github.com/qubvel-org/segmentation_models.pytorch), [PyTorch Lightning](https://lightning.ai/), and [Hydra](https://hydra.cc/).
 
----
+**Key features**
 
-## Features
-
-- **Config-driven**: change model / backbone / optimizer / augmentation / all hyperparameters by editing YAML or passing command-line args — no code changes needed.
-- **Multi-class & binary segmentation**: both are supported through a single code path.
+- **Config-driven**: swap model / backbone / optimizer / augmentation / all hyperparameters from the command line — no code changes needed.
+- **Multi-class & binary segmentation**: both supported through a single code path.
 - **20+ architectures × 100+ encoders**: UNet, UNet++, DeepLabV3+, FPN, MAnet, … with ResNet, EfficientNet, MiT, … backbones.
-- **Automatic metric logging**: per-class and mean Dice / IoU, logged to TensorBoard or W&B.
-- **Multi-GPU / DDP training**: configurable via `hardware.*` fields in `train.yaml` or command-line overrides.
+- **Automatic metric logging**: per-class and mean Dice / IoU saved to TensorBoard and W&B.
+- **Flexible evaluation**: evaluate any split (train / val / test) with a single flag; results saved as TensorBoard events and CSV.
+- **Multi-GPU / DDP**: configurable via `hardware.*` fields or command-line overrides.
+
+**Project structure**
+
+```
+seg-baseline/
+├── configs/               ← all hyperparameters live here (no code edits needed)
+│   ├── train.yaml         ← main config
+│   ├── model/             ← architecture + encoder configs
+│   ├── dataset/           ← dataset root, mask format, class definitions
+│   ├── augmentation/      ← light / medium / heavy pipelines
+│   └── optimizer/         ← optimizer + scheduler configs
+├── src/
+│   ├── datasets/
+│   │   └── seg_dataset.py      ← SegDataset + SegDataModule
+│   ├── models/
+│   │   └── seg_module.py       ← Lightning module (model + loss + metrics)
+│   └── transforms/
+│       └── build_transforms.py ← augmentation pipeline builder
+├── train.py               ← training entry point
+├── evaluate.py            ← evaluation on any split (train / val / test)
+├── predict.py             ← single-image inference + visualisation
+└── requirements.txt
+```
 
 ---
 
-## Requirements
+## Installation
 
 ```bash
 pip install -r requirements.txt
@@ -27,19 +49,17 @@ Key dependencies: `torch`, `pytorch-lightning`, `segmentation-models-pytorch`, `
 
 ## Dataset Structure
 
-Organise your dataset as follows (same as the demo dataset):
-
 ```
 your-dataset/
 ├── train/
 │   ├── images/          ← RGB images (.png / .jpg)
-│   └── masks/           ← segmentation masks (.png)
+│   └── <mask_dir>/      ← segmentation masks (.png)
 ├── val/
 │   ├── images/
-│   └── masks/
+│   └── <mask_dir>/
 └── test/
     ├── images/
-    └── masks/
+    └── <mask_dir>/
 ```
 
 **Mask formats**
@@ -51,40 +71,49 @@ your-dataset/
 
 ---
 
-## Quick Start
+## Training
 
-### 1. Train with defaults (UNet + ResNet34, optic disc dataset)
+### Basic usage
 
 ```bash
 python train.py
 ```
 
-### 2. Change model architecture
+Trains with default settings (UNet + ResNet34, demo dataset). Results and checkpoints are saved under `outputs/`.
+
+### Common overrides
 
 ```bash
+# Change architecture / encoder
 python train.py model=unetplusplus
 python train.py model=deeplabv3plus model.encoder=resnet50
 python train.py model=fpn model.encoder=efficientnet-b4
-```
 
-### 3. Change training hyperparameters
-
-```bash
+# Change training hyperparameters
 python train.py train.batch_size=4 train.epochs=200 train.img_size=640
 python train.py optimizer=sgd optimizer.lr=1e-2
 python train.py augmentation=heavy
+
+# Use your own dataset
+python train.py dataset=my_dataset
 ```
 
-### 4. Switch to binary segmentation (optic disc only)
+### Multi-GPU / DDP
 
 ```bash
-python train.py dataset.mask_dir=masks_od dataset.mask_mode=binary \
-                dataset.num_classes=1 dataset.class_names=[background,optic_disc] \
-                dataset.foreground_classes=[1] \
-                checkpoint.monitor=val/dice_mean
+# All available GPUs
+python train.py hardware.devices=4 hardware.strategy=ddp
+
+# Specific GPUs
+python train.py 'hardware.devices=[0,1]' hardware.strategy=ddp
+
+# Mixed-precision + DDP (recommended for speed)
+python train.py hardware.devices=4 hardware.strategy=ddp train.precision=16-mixed
 ```
 
-### 5. Sweep multiple configs (Hydra multirun)
+> **Note**: With DDP, each process spawns its own DataLoader workers. Reduce `train.num_workers` if you see high memory or CPU usage.
+
+### Hyperparameter sweep (Hydra multirun)
 
 ```bash
 python train.py --multirun \
@@ -92,29 +121,33 @@ python train.py --multirun \
     model.encoder=resnet34,resnet50
 ```
 
-Results are saved under `outputs/<experiment_name>/`.
+### Custom top-level config
+
+```bash
+cp configs/train.yaml configs/experiment_v2.yaml
+# edit configs/experiment_v2.yaml as needed, then:
+python train.py --config-name=experiment_v2
+python train.py --config-name=experiment_v2 model=deeplabv3plus train.epochs=200
+```
 
 ---
 
-## Evaluate
+## Evaluation
 
-Run evaluation on any dataset split with a saved checkpoint:
+Evaluate a saved checkpoint on any dataset split:
 
 ```bash
-# Evaluate on test set (default)
+# Test set (default)
 python evaluate.py checkpoint=outputs/<name>/checkpoints/best.ckpt
 
-# Evaluate on val set
+# Validation set
 python evaluate.py checkpoint=outputs/<name>/checkpoints/best.ckpt split=val
 
-# Evaluate on train set
+# Training set
 python evaluate.py checkpoint=outputs/<name>/checkpoints/best.ckpt split=train
-
-# Combine with other overrides (e.g. different dataset config)
-python evaluate.py checkpoint=outputs/<name>/checkpoints/best.ckpt split=val dataset=optic
 ```
 
-Prints a metric table (Dice / IoU per class and mean) for the chosen split.
+Prints a metric table (per-class and mean Dice / IoU). Results are also saved automatically under `outputs/<run>_eval_<split>/` as TensorBoard events and `metrics.csv`.
 
 ---
 
@@ -122,7 +155,7 @@ Prints a metric table (Dice / IoU per class and mean) for the chosen split.
 
 ```bash
 python predict.py \
-    --img demo-dataset/test/images/14010410123_20170329164027156.png \
+    --img path/to/image.png \
     --checkpoint outputs/<name>/checkpoints/best.ckpt \
     --out result.png
 ```
@@ -133,31 +166,45 @@ Produces a side-by-side visualisation of the input image and the colour-coded pr
 
 ## Configuration Reference
 
-### Directory layout
+### Adding a new dataset
 
-```
-configs/
-├── train.yaml              ← main config (edit epochs, batch_size, img_size, etc.)
-├── model/
-│   ├── unet.yaml           ← arch + encoder + weights
-│   ├── unetplusplus.yaml
-│   ├── deeplabv3plus.yaml
-│   ├── fpn.yaml
-│   └── manet.yaml
-├── dataset/
-│   ├── optic.yaml          ← root path, mask_dir, num_classes, class names
-│   └── custom.yaml         ← template for your own dataset
-├── augmentation/
-│   ├── light.yaml
-│   ├── medium.yaml         ← default
-│   └── heavy.yaml
-└── optimizer/
-    ├── adamw.yaml          ← default
-    ├── adam.yaml
-    └── sgd.yaml
+1. Copy the appropriate template and rename it (e.g. `configs/dataset/my_dataset.yaml`):
+
+**Multi-class** — copy `configs/dataset/multiclass.yaml`:
+
+```yaml
+name: my_dataset
+root: /path/to/dataset
+mask_dir: masks
+mask_mode: index            # pixel values are class indices 0, 1, 2, …
+num_classes: 3
+class_names: [background, class_a, class_b]
+foreground_classes: [1, 2]  # indices used for mean Dice/IoU (excludes background)
 ```
 
-### Key parameters in `configs/train.yaml`
+**Binary** — copy `configs/dataset/binaryclass.yaml`:
+
+```yaml
+name: my_dataset
+root: /path/to/dataset
+mask_dir: masks
+mask_mode: binary           # pixel values {0, 255} → auto-converted to {0, 1}
+num_classes: 1
+class_names: [foreground]
+foreground_classes: [0]
+```
+
+2. Run:
+
+```bash
+python train.py dataset=my_dataset
+```
+
+No Python code changes needed.
+
+### Key parameters
+
+**`configs/train.yaml`**
 
 | Parameter | Default | Description |
 |---|---|---|
@@ -167,12 +214,14 @@ configs/
 | `train.num_workers` | 4 | DataLoader workers |
 | `train.precision` | `"32-true"` | `"16-mixed"` for AMP |
 | `train.early_stopping` | false | Enable early stopping |
+| `split` | `test` | Split evaluated by `evaluate.py` (`train` / `val` / `test`) |
 | `logging.logger` | `tensorboard` | `"tensorboard"` or `"wandb"` |
-| `hardware.devices` | `auto` | Number of GPUs or list of GPU ids |
-| `hardware.strategy` | `auto` | DDP strategy (`"ddp"`, `"fsdp"`, …) |
+| `hardware.accelerator` | `auto` | `"auto"`, `"gpu"`, `"cpu"` |
+| `hardware.devices` | `auto` | `"auto"`, integer count, or list e.g. `[0,1]` |
 | `hardware.num_nodes` | `1` | Number of machines for multi-node training |
+| `hardware.strategy` | `auto` | `"auto"`, `"ddp"`, `"fsdp"`, … |
 
-### Key parameters in `configs/model/*.yaml`
+**`configs/model/*.yaml`**
 
 | Parameter | Example | Description |
 |---|---|---|
@@ -180,7 +229,7 @@ configs/
 | `model.encoder` | `resnet34` | Encoder backbone |
 | `model.encoder_weights` | `imagenet` | Pre-training (`null` for random init) |
 
-### Key parameters in `configs/optimizer/*.yaml`
+**`configs/optimizer/*.yaml`**
 
 | Parameter | Example | Description |
 |---|---|---|
@@ -188,87 +237,11 @@ configs/
 | `optimizer.weight_decay` | `1e-4` | Weight decay |
 | `scheduler.name` | `cosine` | `cosine`, `step`, `plateau`, `none` |
 
----
-
-## Adding a New Dataset
-
-1. Copy `configs/dataset/custom.yaml` and fill in your values:
-
-```yaml
-dataset:
-  name: my_dataset
-  root: /path/to/dataset
-  mask_dir: masks
-  mask_mode: index        # or "binary"
-  num_classes: 3
-  class_names: [background, class1, class2]
-  foreground_classes: [1, 2]
-```
-
-2. Run:
-
-```bash
-python train.py dataset=my_dataset
-```
-
-No Python code changes needed — as long as your data follows the `train/val/test` + `images/masks` directory structure.
-
----
-
-## Multi-GPU / DDP Training
-
-Multi-GPU training is supported via PyTorch Lightning's DDP backend. The relevant parameters live under `hardware` in `configs/train.yaml`:
-
-| Parameter | Default | Description |
-|---|---|---|
-| `hardware.accelerator` | `auto` | `"auto"`, `"gpu"`, `"cpu"` |
-| `hardware.devices` | `auto` | `"auto"`, integer count, or list e.g. `[0,1]` |
-| `hardware.num_nodes` | `1` | Number of machines (for multi-node jobs) |
-| `hardware.strategy` | `auto` | `"auto"`, `"ddp"`, `"ddp_find_unused_parameters_false"`, `"fsdp"` |
-
-**Examples**
-
-```bash
-# Use all available GPUs with DDP
-python train.py hardware.devices=4 hardware.strategy=ddp
-
-# Use specific GPUs
-python train.py 'hardware.devices=[0,1]' hardware.strategy=ddp
-
-# Mixed-precision + DDP (recommended for speed)
-python train.py hardware.devices=4 hardware.strategy=ddp train.precision=16-mixed
-```
-
-> **Note**: With DDP, each process spawns its own DataLoader workers. If you see high memory or CPU usage, reduce `train.num_workers` accordingly (e.g. `train.num_workers=2`).
-
----
-
-## Using a Custom Main Config
-
-By default `train.py` loads `configs/train.yaml`. To use a **different top-level config file** (e.g. `configs/experiment_retina.yaml`), pass Hydra's built-in `--config-name` flag:
-
-```bash
-# Create your own top-level config
-cp configs/train.yaml configs/experiment_retina.yaml
-# Edit configs/experiment_retina.yaml as needed, then run:
-python train.py --config-name=experiment_retina
-```
-
-You can combine this with any command-line override as usual:
-
-```bash
-python train.py --config-name=experiment_retina model=deeplabv3plus train.epochs=200
-```
-
----
-
-## Viewing Training Curves
+### Viewing logs
 
 ```bash
 tensorboard --logdir outputs/
 ```
-
-Then open `http://localhost:6006` in your browser.
 
 ---
 
@@ -277,23 +250,3 @@ Then open `http://localhost:6006` in your browser.
 `Unet` · `UnetPlusPlus` · `MAnet` · `Linknet` · `FPN` · `PSPNet` · `DeepLabV3` · `DeepLabV3Plus` · `PAN`
 
 Full encoder list: https://smp.readthedocs.io/en/latest/encoders.html
-
----
-
-## Project Structure
-
-```
-seg-baseline/
-├── configs/               ← all hyperparameters live here
-├── src/
-│   ├── datasets/
-│   │   └── seg_dataset.py     ← SegDataset + SegDataModule
-│   ├── models/
-│   │   └── seg_module.py      ← Lightning module (model + loss + metrics)
-│   └── transforms/
-│       └── build_transforms.py ← augmentation pipeline builder
-├── train.py               ← training entry point
-├── evaluate.py            ← evaluation on any split (train / val / test)
-├── predict.py             ← single-image inference + visualisation
-└── requirements.txt
-```

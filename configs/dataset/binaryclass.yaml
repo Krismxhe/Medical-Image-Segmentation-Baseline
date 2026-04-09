@@ -1,0 +1,31 @@
+# ── Template for a custom dataset ────────────────────────────────────────────
+#
+# Copy this file, rename it (e.g. configs/dataset/my_dataset.yaml), fill in
+# your values, then run:
+#
+#   python train.py dataset=my_dataset
+#
+# Expected directory structure:
+#
+#   root/
+#   ├── train/
+#   │   ├── images/       ← RGB images (.png / .jpg)
+#   │   └── <mask_dir>/   ← segmentation masks (.png)
+#   ├── val/
+#   │   ├── images/
+#   │   └── <mask_dir>/
+#   └── test/
+#       ├── images/
+#       └── <mask_dir>/
+#
+# mask_mode:
+#   index   → pixel values are class indices 0, 1, 2, …  (multi-class)
+#   binary  → pixel values are {0, 255}, auto-converted to {0, 1}
+# ─────────────────────────────────────────────────────────────────────────────
+name: binary-class
+root: /path/to/your/dataset
+mask_dir: masks
+mask_mode: binary           # pixel values {0, 255} → auto-converted to {0, 1}
+num_classes: 1              # binary: single-channel sigmoid output
+class_names: [foreground]   # only the foreground class; background is implicit
+foreground_classes: [0]     # index into class_names (not class index in mask)
